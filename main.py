@@ -26,7 +26,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def get_args_parser():
-    
+    parser = argparse.ArgumentParser('HEConvMixer training and evaluation script', add_help=False)
     parser.add_argument('--batch-size', default=256, type=int)
     parser.add_argument('--epochs', default=200, type=int)
 
@@ -270,7 +270,7 @@ def main(args):
 
 if __name__ == '__main__':
     
-    parser = argparse.ArgumentParser('eswin_transformer training and evaluation script', parents=[get_args_parser()])
+    parser = argparse.ArgumentParser('HEConvMixer training and evaluation script', parents=[get_args_parser()])
     args = parser.parse_args()
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
