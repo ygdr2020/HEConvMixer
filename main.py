@@ -230,6 +230,7 @@ def main(args):
     )
     output_dir = Path(args.output_dir)
     testacc_List = []
+    max_accuracy = 0.0
     for epoch in range(args.start_epoch, args.epochs):
         
 
