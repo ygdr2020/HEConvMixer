@@ -284,16 +284,25 @@ class BasicLayer(nn.Module):
 
 class Convolutional_block(nn.Module):
 
-    def __init__(self, embed_dim=96, kernel_size=7):
+    def __init__(self, embed_dim=96, kernel_size=7, downsample=Downsample):
         super().__init__()
         self.dwconv = nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=kernel_size, groups=embed_dim, padding=getsamepadding(kernel_size))
         self.pwconv = nn.Conv2d(embed_dim, embed_dim ,kernel_size=1)
-        self.norm = LayerNorm(embed_dim, data_format="channels_first")
+        self.norm1 = LayerNorm(embed_dim, data_format="channels_first")
+        self.norm2 = LayerNorm(embed_dim*2, data_format="channels_first")
+        if downsample is not None:
+            self.downsample = nn.Sequential(nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                                            nn.Conv2d(embed_dim, embed_dim*2, kernel_size=1),
+                                            nn.GELU())
+        else:
+            self.downsample = None
     def forward(self, x):
         input = x
-        out = F.gelu(self.norm(self.dwconv(input)))
+        out = F.gelu(self.norm1(self.dwconv(input)))
         out += x
-        out = F.gelu(self.norm(self.pwconv(out)))
+        out = F.gelu(self.norm1(self.pwconv(out)))
+        if self.downsample is not None:
+            out = self.norm2(self.downsample(out))
         return out
 
 class LayerNorm(nn.Module):
@@ -331,7 +340,7 @@ class ESwinTransformer(nn.Module):
         self.embed_dim = embed_dim
         self.ape = ape
         self.patch_norm = patch_norm
-        self.num_features = int(embed_dim * 2 ** (self.num_layers - 2))
+        self.num_features = int(embed_dim * 2 ** (self.num_layers - 1))
         self.mlp_ratio = mlp_ratio
 
         # split image into non-overlapping patches
@@ -358,9 +367,9 @@ class ESwinTransformer(nn.Module):
             self.convlayers.append(convlayer)
 
         for i_layer in range(1, self.num_layers):
-            layer = BasicLayer(dim=int(embed_dim * 2 ** (i_layer-1)),
-                               input_resolution=(patches_resolution[0] // (2 ** (i_layer-1)),
-                                                 patches_resolution[1] // (2 ** (i_layer-1))),
+            layer = BasicLayer(dim=int(embed_dim * 2 ** (i_layer)),
+                               input_resolution=(patches_resolution[0] // (2 ** (i_layer)),
+                                                 patches_resolution[1] // (2 ** (i_layer))),
                                depth=depths[i_layer],
                                num_heads=num_heads[i_layer-1],
                                window_size=window_size,
