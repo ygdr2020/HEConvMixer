@@ -377,9 +377,7 @@ class ESwinTransformer(nn.Module):
         # build layers
         self.convlayers = nn.ModuleList()
         self.layers = nn.ModuleList()
-        for i_layer in range(depths[0]):
-            convlayer = Convolutional_block(embed_dim=embed_dim, kernel_size=kernel_size)
-            self.convlayers.append(convlayer)
+        self.convlayers.append(Convolutional_Layer(embed_dim=embed_dim, kernel_size=kernel_size, depth=depths[0],downsample=Downsample))
 
         for i_layer in range(1, self.num_layers):
             layer = BasicLayer(dim=int(embed_dim * 2 ** (i_layer)),
