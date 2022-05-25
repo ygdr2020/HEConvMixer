@@ -282,14 +282,31 @@ class BasicLayer(nn.Module):
             x = self.downsample(x)
         return x
 
-class Convolutional_block(nn.Module):
+class Convolutional_Block(nn.Module):
+    def __init__(self, embed_dim, kernel_size):
+        super(Convolutional_Block, self).__init__()
+        self.dwconv = nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=kernel_size,
+                                groups=embed_dim, padding=getsamepadding(kernel_size))
+        self.pwconv = nn.Conv2d(embed_dim, embed_dim, kernel_size=1)
+        self.norm = LayerNorm(embed_dim, data_format="channels_first")
 
-    def __init__(self, embed_dim=96, kernel_size=7, downsample=Downsample):
+
+    def forward(self, x):
+        input = x
+        out = F.gelu(self.norm(self.dwconv(input)))
+        out += x
+        out = F.gelu(self.norm(self.pwconv(out)))
+        return out
+
+
+class Convolutional_Layer(nn.Module):
+
+    def __init__(self, embed_dim=96, kernel_size=7, depth=2, downsample=Downsample):
         super().__init__()
-        self.dwconv = nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=kernel_size, groups=embed_dim, padding=getsamepadding(kernel_size))
-        self.pwconv = nn.Conv2d(embed_dim, embed_dim ,kernel_size=1)
-        self.norm1 = LayerNorm(embed_dim, data_format="channels_first")
-        self.norm2 = LayerNorm(embed_dim*2, data_format="channels_first")
+        self.norm = LayerNorm(embed_dim * 2, data_format="channels_first")
+        self.blocks = nn.ModuleList([
+            Convolutional_Block(embed_dim=embed_dim, kernel_size=kernel_size)
+            for i in range(depth)])
         if downsample is not None:
             self.downsample = nn.Sequential(nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
                                             nn.Conv2d(embed_dim, embed_dim*2, kernel_size=1),
@@ -297,12 +314,10 @@ class Convolutional_block(nn.Module):
         else:
             self.downsample = None
     def forward(self, x):
-        input = x
-        out = F.gelu(self.norm1(self.dwconv(input)))
-        out += x
-        out = F.gelu(self.norm1(self.pwconv(out)))
+        for blk in self.blocks:
+            x = blk(x)
         if self.downsample is not None:
-            out = self.norm2(self.downsample(out))
+            out = self.norm(self.downsample(x))
         return out
 
 class LayerNorm(nn.Module):
