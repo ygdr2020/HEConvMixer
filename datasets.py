@@ -18,12 +18,16 @@ def build_dataset(is_train, args):
     elif args.data_set == 'CIFAR100':
         dataset = datasets.CIFAR100(args.data_path, train=is_train, download=True,transform=transform)
         nb_classes = 100
+    elif args.data_set == 'IMNET':
+        root = os.path.join(args.data_path, 'train'if is_train else 'val')
+        dataset = datasets.ImageFolder(root, transform=transform)
+        nb_classes = 200
 
     return dataset, nb_classes
 
 
 def build_transform(is_train, args):
-    resize_im = args.input_size > 32
+    resize_im = args.input_size > 64
     if is_train:
         # this should always dispatch to transforms_imagenet_train
         transform = create_transform(
